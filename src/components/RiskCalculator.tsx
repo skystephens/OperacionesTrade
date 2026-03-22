@@ -41,7 +41,7 @@ interface Props {
 }
 
 const FIELD_CLASS =
-  'w-full bg-surface-700 border border-surface-600 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-brand'
+  'w-full bg-surface-700 border border-surface-600 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-brand placeholder:text-slate-500'
 
 export function RiskCalculator({ currentPrice }: Props) {
   const [form, setForm] = useState<RiskCalcInput>({
@@ -97,7 +97,7 @@ export function RiskCalculator({ currentPrice }: Props) {
           { label: 'Stop-Loss (%)', key: 'stopLossPercent' as const, step: 0.1 },
         ].map(({ label, key, step }) => (
           <div key={key}>
-            <label className="text-surface-600 text-xs mb-1 block">{label}</label>
+            <label className="text-slate-300 text-xs mb-1 block">{label}</label>
             <input
               type="number"
               step={step}
@@ -120,7 +120,7 @@ export function RiskCalculator({ currentPrice }: Props) {
           { label: 'Precio liquidacion', value: `$${result.liquidationPrice.toFixed(2)}`, color: 'text-down font-bold' },
         ].map(({ label, value, color }) => (
           <div key={label} className="flex justify-between items-center bg-surface-700 rounded-xl px-3 py-2">
-            <span className="text-surface-600 text-xs">{label}</span>
+            <span className="text-slate-300 text-xs font-semibold">{label}</span>
             <span className={`font-mono text-sm ${color}`}>{value}</span>
           </div>
         ))}

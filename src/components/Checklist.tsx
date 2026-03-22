@@ -59,7 +59,7 @@ export function Checklist() {
                 </svg>
               )}
             </span>
-            <span className={`text-sm ${checked[item.id] ? 'text-white' : 'text-surface-600'}`}>
+            <span className={`text-sm ${checked[item.id] ? 'text-white' : 'text-slate-300'}`}>
               {item.label}
             </span>
           </button>
