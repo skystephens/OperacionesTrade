@@ -122,30 +122,29 @@ export function Onboarding({ onComplete, onClose, initialProfile }: Props) {
       })
     : null
 
-  const isEdit = !!onClose
-
   return (
-    <div className={`${isEdit ? 'fixed inset-0 z-50 bg-black/70 flex items-end justify-center' : 'min-h-screen bg-surface-900 flex flex-col items-center justify-center'} px-4 py-8`}>
-      <div className={`w-full max-w-md space-y-6 ${isEdit ? 'bg-surface-900 rounded-t-3xl px-4 pt-4 pb-8 max-h-[92vh] overflow-y-auto' : ''}`}>
+    <div className="min-h-screen bg-surface-900 flex flex-col max-w-md mx-auto">
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      {/* Top bar with back button */}
+      <header className="sticky top-0 z-10 bg-surface-900/95 backdrop-blur border-b border-surface-700 px-4 py-3 flex items-center gap-3">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors"
+          >
+            <span className="text-base">←</span>
+            <span className="text-sm">Volver al dashboard</span>
+          </button>
+        )}
+        {!onClose && (
           <div>
-            <h1 className="text-white font-bold text-xl tracking-tight">
-              {isEdit ? 'Editar perfil' : 'Trade Dashboard'}
-            </h1>
-            <p className="text-slate-400 text-sm">{isEdit ? 'Modifica tus parametros de inversion' : 'Configuremos tu perfil de inversion'}</p>
+            <h1 className="text-white font-bold text-base">Trade Dashboard</h1>
+            <p className="text-slate-400 text-xs">Configuremos tu perfil de inversion</p>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-white text-xl leading-none transition-colors w-8 h-8 flex items-center justify-center"
-              aria-label="Cerrar"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        )}
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-10">
 
         {/* Progress dots */}
         <div className="flex justify-center gap-2">

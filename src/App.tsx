@@ -34,8 +34,16 @@ function SymbolBadge({ symbol }: { symbol: Symbol }) {
   return <span>{names[symbol]}/USDT</span>
 }
 
+const DEFAULT_PROFILE: UserProfile = {
+  capital: 300,
+  horizon: 'weeks',
+  expectedReturn: null,
+  riskTolerance: 'moderate',
+  createdAt: '',
+}
+
 export default function App() {
-  const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile())
+  const [profile, setProfile] = useState<UserProfile>(() => loadProfile() ?? DEFAULT_PROFILE)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [tab, setTab] = useState<Tab>('chart')
@@ -45,8 +53,15 @@ export default function App() {
 
   const { ticker } = useBinanceTicker(symbol)
 
-  if (!profile) {
-    return <Onboarding onComplete={(p) => setProfile(p)} />
+  // Full-screen profile page
+  if (showOnboarding) {
+    return (
+      <Onboarding
+        onComplete={(p) => { setProfile(p); setShowOnboarding(false) }}
+        onClose={() => setShowOnboarding(false)}
+        initialProfile={profile}
+      />
+    )
   }
 
   const riskLabel: Record<string, string> = {
@@ -173,15 +188,6 @@ export default function App() {
           ))}
         </div>
       </nav>
-
-      {/* Onboarding modal overlay */}
-      {showOnboarding && (
-        <Onboarding
-          onComplete={(p) => { setProfile(p); setShowOnboarding(false) }}
-          onClose={() => setShowOnboarding(false)}
-          initialProfile={profile}
-        />
-      )}
 
       {/* Tab guide overlay */}
       {showGuide && (
