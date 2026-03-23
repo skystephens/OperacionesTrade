@@ -66,6 +66,8 @@ export function generatePlan(profile: UserProfile): InvestmentPlan {
 
 interface Props {
   onComplete: (profile: UserProfile) => void
+  onClose?: () => void
+  initialProfile?: UserProfile | null
 }
 
 type Step = 0 | 1 | 2 | 3 | 4
@@ -82,12 +84,12 @@ const HORIZON_OPTIONS: { value: TimeHorizon; label: string; desc: string }[] = [
   { value: 'months', label: 'Meses',   desc: 'Posicion · 1h' },
 ]
 
-export function Onboarding({ onComplete }: Props) {
+export function Onboarding({ onComplete, onClose, initialProfile }: Props) {
   const [step, setStep] = useState<Step>(0)
-  const [capital, setCapital] = useState('')
-  const [horizon, setHorizon] = useState<TimeHorizon | null>(null)
-  const [expectedReturn, setExpectedReturn] = useState('')
-  const [riskTolerance, setRiskTolerance] = useState<RiskTolerance | null>(null)
+  const [capital, setCapital] = useState(initialProfile ? String(initialProfile.capital) : '')
+  const [horizon, setHorizon] = useState<TimeHorizon | null>(initialProfile?.horizon ?? null)
+  const [expectedReturn, setExpectedReturn] = useState(initialProfile?.expectedReturn ? String(initialProfile.expectedReturn) : '')
+  const [riskTolerance, setRiskTolerance] = useState<RiskTolerance | null>(initialProfile?.riskTolerance ?? null)
 
   const canNext = (): boolean => {
     if (step === 0) return parseFloat(capital) > 0
@@ -120,14 +122,29 @@ export function Onboarding({ onComplete }: Props) {
       })
     : null
 
+  const isEdit = !!onClose
+
   return (
-    <div className="min-h-screen bg-surface-900 flex flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md space-y-6">
+    <div className={`${isEdit ? 'fixed inset-0 z-50 bg-black/70 flex items-end justify-center' : 'min-h-screen bg-surface-900 flex flex-col items-center justify-center'} px-4 py-8`}>
+      <div className={`w-full max-w-md space-y-6 ${isEdit ? 'bg-surface-900 rounded-t-3xl px-4 pt-4 pb-8 max-h-[92vh] overflow-y-auto' : ''}`}>
 
         {/* Header */}
-        <div className="text-center space-y-1">
-          <h1 className="text-white font-bold text-2xl tracking-tight">Trade Dashboard</h1>
-          <p className="text-slate-400 text-sm">Configuremos tu perfil de inversion</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-white font-bold text-xl tracking-tight">
+              {isEdit ? 'Editar perfil' : 'Trade Dashboard'}
+            </h1>
+            <p className="text-slate-400 text-sm">{isEdit ? 'Modifica tus parametros de inversion' : 'Configuremos tu perfil de inversion'}</p>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white text-xl leading-none transition-colors w-8 h-8 flex items-center justify-center"
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Progress dots */}

@@ -5,7 +5,8 @@ import { TradeJournal } from './components/TradeJournal'
 import { Checklist } from './components/Checklist'
 import { MarketAnalysis } from './components/MarketAnalysis'
 import { CashFlow } from './components/CashFlow'
-import { Onboarding, loadProfile, clearProfile } from './components/Onboarding'
+import { Onboarding, loadProfile } from './components/Onboarding'
+import { TabGuide } from './components/TabGuide'
 import { useBinanceTicker } from './hooks/useBinanceWS'
 import type { UserProfile } from './types'
 
@@ -35,6 +36,8 @@ function SymbolBadge({ symbol }: { symbol: Symbol }) {
 
 export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile())
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   const [tab, setTab] = useState<Tab>('chart')
   const [symbol, setSymbol] = useState<Symbol>('ETHUSDT')
   const [interval, setInterval] = useState<Interval>('5m')
@@ -89,11 +92,19 @@ export default function App() {
                 </p>
               </div>
             )}
-            {/* Reset profile */}
+            {/* Help */}
             <button
-              onClick={() => { clearProfile(); setProfile(null) }}
-              className="text-slate-600 hover:text-slate-400 text-xs transition-colors"
-              title="Cambiar perfil"
+              onClick={() => setShowGuide(true)}
+              className="text-slate-500 hover:text-slate-300 text-sm font-bold transition-colors w-7 h-7 flex items-center justify-center rounded-full border border-surface-700"
+              title="Como usar este tab"
+            >
+              ?
+            </button>
+            {/* Edit profile */}
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="text-slate-600 hover:text-slate-400 text-sm transition-colors w-7 h-7 flex items-center justify-center"
+              title="Editar perfil"
             >
               ⚙
             </button>
@@ -151,7 +162,7 @@ export default function App() {
           {TABS.map(({ id, label, icon }) => (
             <button
               key={id}
-              onClick={() => setTab(id)}
+              onClick={() => { setTab(id); setShowGuide(false) }}
               className={`flex flex-col items-center py-3 gap-0.5 transition-colors ${
                 tab === id ? 'text-brand' : 'text-slate-400'
               }`}
@@ -162,6 +173,20 @@ export default function App() {
           ))}
         </div>
       </nav>
+
+      {/* Onboarding modal overlay */}
+      {showOnboarding && (
+        <Onboarding
+          onComplete={(p) => { setProfile(p); setShowOnboarding(false) }}
+          onClose={() => setShowOnboarding(false)}
+          initialProfile={profile}
+        />
+      )}
+
+      {/* Tab guide overlay */}
+      {showGuide && (
+        <TabGuide tab={tab} onClose={() => setShowGuide(false)} />
+      )}
     </div>
   )
 }
