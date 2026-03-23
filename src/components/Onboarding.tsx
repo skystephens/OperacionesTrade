@@ -126,21 +126,19 @@ export function Onboarding({ onComplete, onClose, initialProfile }: Props) {
     <div className="min-h-screen bg-surface-900 flex flex-col max-w-md mx-auto">
 
       {/* Top bar with back button */}
-      <header className="sticky top-0 z-10 bg-surface-900/95 backdrop-blur border-b border-surface-700 px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-10 bg-surface-900/95 backdrop-blur border-b border-surface-700 px-4 py-3 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-white font-bold text-base">Mi Perfil de Inversion</h1>
+          <p className="text-slate-400 text-xs">Configura tu plan personalizado</p>
+        </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 bg-surface-700 hover:bg-surface-600 text-white px-3 py-2 rounded-xl transition-colors text-sm font-semibold"
           >
-            <span className="text-base">←</span>
-            <span className="text-sm">Volver al dashboard</span>
+            <span>←</span>
+            <span>Dashboard</span>
           </button>
-        )}
-        {!onClose && (
-          <div>
-            <h1 className="text-white font-bold text-base">Trade Dashboard</h1>
-            <p className="text-slate-400 text-xs">Configuremos tu perfil de inversion</p>
-          </div>
         )}
       </header>
 

@@ -163,7 +163,26 @@ export default function App() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto px-4 py-3 pb-24 space-y-4">
-        {tab === 'chart'     && <PriceTicker symbol={symbol} interval={interval} />}
+        {tab === 'chart' && (
+          <>
+            <PriceTicker symbol={symbol} interval={interval} />
+            <div className="bg-surface-800 rounded-2xl p-4 space-y-2 border border-surface-700">
+              <p className="text-slate-300 text-xs font-bold uppercase tracking-widest">Que puedes hacer aqui</p>
+              {[
+                { icon: '📊', text: 'Cambia el intervalo arriba (1m, 3m, 5m, 15m, 1h) — usa 1m-5m para scalping rapido, 15m-1h para ver la tendencia general.' },
+                { icon: '🔄', text: 'Cambia la moneda tocando ETH/USDT en el header — tienes ETH, BTC, SOL y BNB disponibles.' },
+                { icon: '🕯️', text: 'Las velas verdes = precio subio en ese periodo. Rojas = precio bajo. El tamano del cuerpo indica la fuerza del movimiento.' },
+                { icon: '📉', text: 'Volumen alto = mercado activo, buenas condiciones para operar. Volumen bajo = evita entrar, hay mas riesgo de slippage.' },
+                { icon: '🧠', text: 'Ve al tab Analisis para ver senales de compra/venta calculadas automaticamente con RSI + EMA + Volumen.' },
+              ].map(({ icon, text }, i) => (
+                <div key={i} className="flex items-start gap-2 bg-surface-700 rounded-xl px-3 py-2">
+                  <span className="text-sm shrink-0">{icon}</span>
+                  <span className="text-slate-200 text-xs leading-relaxed">{text}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
         {tab === 'analysis'  && <MarketAnalysis symbol={symbol} interval={interval} />}
         {tab === 'risk'      && <RiskCalculator currentPrice={ticker?.price ?? null} />}
         {tab === 'journal'   && <TradeJournal currentPrice={ticker?.price ?? null} />}
