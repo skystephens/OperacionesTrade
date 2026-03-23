@@ -51,3 +51,36 @@ export interface RiskCalcResult {
   liquidationPrice: number
   riskRewardRatio: number
 }
+
+export type RiskTolerance = 'conservative' | 'moderate' | 'aggressive'
+export type TimeHorizon = 'days' | 'weeks' | 'months'
+
+export interface UserProfile {
+  capital: number
+  horizon: TimeHorizon
+  expectedReturn: number | null
+  riskTolerance: RiskTolerance
+  createdAt: string
+}
+
+export interface InvestmentPlan {
+  recommendedLeverage: number
+  riskPerTrade: number
+  maxTradesPerDay: number
+  suggestedPair: string
+  suggestedInterval: string
+  estimatedDailyReturn: number
+  monthlyProjection: number
+  notes: string[]
+}
+
+export interface CashFlowEntry {
+  id: string
+  label: string
+  amount: number
+}
+
+export interface CashFlowProfile {
+  incomes: CashFlowEntry[]
+  expenses: CashFlowEntry[]
+}
