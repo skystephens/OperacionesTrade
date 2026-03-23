@@ -45,11 +45,11 @@ const FIELD_CLASS =
 
 export function RiskCalculator({ currentPrice }: Props) {
   const [form, setForm] = useState<RiskCalcInput>({
-    capital: 500,
-    riskPercent: 1,
-    leverage: 10,
+    capital: 200,
+    riskPercent: 2,
+    leverage: 15,
     entryPrice: currentPrice ?? 2108.28,
-    stopLossPercent: 0.5,
+    stopLossPercent: 2,
     direction: 'LONG',
   })
 
@@ -108,6 +108,18 @@ export function RiskCalculator({ currentPrice }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Liquidation warning */}
+      {form.leverage >= 25 && form.stopLossPercent >= 2 && (
+        <div className="bg-down/10 border border-down/30 rounded-xl px-3 py-2">
+          <p className="text-down text-xs font-bold">Advertencia: apalancamiento alto</p>
+          <p className="text-slate-300 text-xs mt-0.5">
+            Con {form.leverage}x, liquidan a {(100 / form.leverage).toFixed(1)}% de movimiento adverso.
+            Tu SL de {form.stopLossPercent}% esta muy cerca — un spike puede liquidarte antes de que ejecute.
+            Considera bajar a 15x-20x con este stop-loss.
+          </p>
+        </div>
+      )}
 
       {/* Results */}
       <div className="space-y-2 pt-2 border-t border-surface-700">
