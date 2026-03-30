@@ -4,7 +4,7 @@ import { RiskCalculator } from './components/RiskCalculator'
 import { TradeJournal } from './components/TradeJournal'
 import { Checklist } from './components/Checklist'
 import { MarketAnalysis } from './components/MarketAnalysis'
-import { CashFlow } from './components/CashFlow'
+import { Backtester } from './components/Backtester'
 import { Onboarding, loadProfile } from './components/Onboarding'
 import { TabGuide } from './components/TabGuide'
 import { useBinanceTicker } from './hooks/useBinanceWS'
@@ -16,7 +16,7 @@ type Symbol = typeof SYMBOLS[number]
 const INTERVALS = ['1m', '3m', '5m', '15m', '1h'] as const
 type Interval = typeof INTERVALS[number]
 
-type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'checklist' | 'cashflow'
+type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'checklist' | 'sim'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'chart',     label: 'Precio',   icon: '📈' },
@@ -24,7 +24,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'risk',      label: 'Riesgo',   icon: '🧮' },
   { id: 'journal',   label: 'Bitacora', icon: '📋' },
   { id: 'checklist', label: 'Check',    icon: '✓'  },
-  { id: 'cashflow',  label: 'Flujo',    icon: '💰' },
+  { id: 'sim',       label: 'Sim',      icon: '🔬' },
 ]
 
 function SymbolBadge({ symbol }: { symbol: Symbol }) {
@@ -90,8 +90,8 @@ export default function App() {
               </button>
             )}
             <p className="text-slate-400 text-xs">
-              {tab === 'cashflow'
-                ? `$${profile.capital} · ${riskLabel[profile.riskTolerance]}`
+              {tab === 'sim'
+                ? 'Backtest · últimas 500 velas 1h'
                 : `Futuros Perpetuos · ${interval}`}
             </p>
           </div>
@@ -144,7 +144,7 @@ export default function App() {
         )}
 
         {/* Interval selector */}
-        {(tab === 'chart' || tab === 'analysis') && (
+        {(tab === 'chart' || tab === 'analysis') && tab !== 'sim' && (
           <div className="flex gap-2 mt-3">
             {INTERVALS.map((iv) => (
               <button
@@ -187,7 +187,7 @@ export default function App() {
         {tab === 'risk'      && <RiskCalculator currentPrice={ticker?.price ?? null} />}
         {tab === 'journal'   && <TradeJournal currentPrice={ticker?.price ?? null} />}
         {tab === 'checklist' && <Checklist />}
-        {tab === 'cashflow'  && <CashFlow profile={profile} />}
+        {tab === 'sim'       && <Backtester symbol={symbol} />}
       </main>
 
       {/* Bottom navigation */}

@@ -41,6 +41,59 @@ export function calcEMAArray(values: number[], period: number): number[] {
   return result
 }
 
+// ─── MACD ────────────────────────────────────────────────────────────────────
+// MACD Line  = EMA(12) − EMA(26)
+// Signal     = EMA(9) of MACD Line
+// Histogram  = MACD − Signal
+// Positive histogram = bullish momentum building
+// Negative histogram = bearish momentum building
+// Cross above zero = buy signal; cross below zero = sell signal
+
+export interface MACDResult {
+  macd: number
+  signal: number
+  histogram: number
+  trend: 'bullish' | 'bearish' | 'neutral'
+  crossover: 'bullish_cross' | 'bearish_cross' | null  // signal line cross in last candle
+}
+
+export function calcMACD(closes: number[]): MACDResult {
+  const empty: MACDResult = { macd: 0, signal: 0, histogram: 0, trend: 'neutral', crossover: null }
+  if (closes.length < 35) return empty
+
+  const ema12 = calcEMAArray(closes, 12)
+  const ema26 = calcEMAArray(closes, 26)
+
+  // Align: ema12 has 14 more values than ema26
+  const offset = ema12.length - ema26.length
+  const macdLine = ema26.map((v, i) => ema12[i + offset] - v)
+  if (macdLine.length < 9) return empty
+
+  const signalLine = calcEMAArray(macdLine, 9)
+  const alignOffset = macdLine.length - signalLine.length
+
+  const lastMACD = macdLine[macdLine.length - 1]
+  const lastSignal = signalLine[signalLine.length - 1]
+  const prevMACD = macdLine[macdLine.length - 2]
+  const prevSignal = signalLine[signalLine.length - 2] ?? lastSignal
+  const histogram = lastMACD - lastSignal
+  const prevHistogram = prevMACD - prevSignal
+
+  // Detect crossover in the last candle
+  let crossover: MACDResult['crossover'] = null
+  if (prevHistogram <= 0 && histogram > 0) crossover = 'bullish_cross'
+  else if (prevHistogram >= 0 && histogram < 0) crossover = 'bearish_cross'
+
+  const trend: MACDResult['trend'] =
+    histogram > 0 && lastMACD > 0 ? 'bullish' :
+    histogram < 0 && lastMACD < 0 ? 'bearish' : 'neutral'
+
+  // suppress unused var warning
+  void alignOffset
+
+  return { macd: lastMACD, signal: lastSignal, histogram, trend, crossover }
+}
+
 // ─── Pivot Point S/R Detection ───────────────────────────────────────────────
 // Finds real swing highs/lows using a lookback window.
 // A pivot high: the candle's high is the highest in [i-window .. i+window]
@@ -231,7 +284,8 @@ export interface AnalysisResult {
   reasons: string[]
   trend: 'ALCISTA' | 'BAJISTA' | 'LATERAL'
   trendStrength: number // 0-100
-  entryPlan: EntryPlan | null  // null if signal is NEUTRAL
+  macd: MACDResult
+  entryPlan: EntryPlan  // always present
 }
 
 export function analyzeMarket(klines: KlineData[]): AnalysisResult | null {
@@ -242,6 +296,7 @@ export function analyzeMarket(klines: KlineData[]): AnalysisResult | null {
   const currentPrice = closes[closes.length - 1]
 
   const rsi = calcRSI(klines, 14)
+  const macd = calcMACD(closes)
   const ema9 = calcEMA(closes, 9)
   const ema21 = calcEMA(closes, 21)
   const ema50 = calcEMA(closes, 50)
@@ -296,6 +351,12 @@ export function analyzeMarket(klines: KlineData[]): AnalysisResult | null {
   if (volumeTrend === 'increasing') { score > 0 ? score += 10 : (score -= 10); reasons.push('Volumen aumentando — confirma movimiento') }
   else if (volumeTrend === 'decreasing') { reasons.push('Volumen bajo — movimiento sin conviccion') }
 
+  // MACD contribution
+  if (macd.crossover === 'bullish_cross') { score += 20; reasons.push('MACD cruzó al alza — momentum alcista confirmado') }
+  else if (macd.crossover === 'bearish_cross') { score -= 20; reasons.push('MACD cruzó a la baja — momentum bajista confirmado') }
+  else if (macd.trend === 'bullish') { score += 10; reasons.push('MACD positivo — momentum alcista activo') }
+  else if (macd.trend === 'bearish') { score -= 10; reasons.push('MACD negativo — momentum bajista activo') }
+
   const distToSupport = supports[0] ? ((currentPrice - supports[0]) / currentPrice) * 100 : 999
   const distToResistance = resistances[0] ? ((resistances[0] - currentPrice) / currentPrice) * 100 : 999
   if (distToSupport < 0.5) { score += 10; reasons.push('Precio cerca de soporte clave') }
@@ -315,21 +376,18 @@ export function analyzeMarket(klines: KlineData[]): AnalysisResult | null {
 
   const trendStrength = Math.abs(score)
 
-  // ── Entry plan (only for directional signals) ─────────────────────────────
-  let entryPlan: EntryPlan | null = null
-  if (signal === 'STRONG_LONG' || signal === 'LONG') {
-    entryPlan = buildEntryPlan('LONG', currentPrice, supports, resistances, score)
-  } else if (signal === 'STRONG_SHORT' || signal === 'SHORT') {
-    entryPlan = buildEntryPlan('SHORT', currentPrice, supports, resistances, score)
-  }
+  // ── Entry plan (always shown — direction inferred from trend or defaulted to LONG for neutral) ──
+  const planDirection: 'LONG' | 'SHORT' =
+    signal === 'STRONG_SHORT' || signal === 'SHORT' ? 'SHORT' : 'LONG'
+  const entryPlan = buildEntryPlan(planDirection, currentPrice, supports, resistances, score)
 
   return {
-    rsi, ema9, ema21, ema50,
+    rsi, macd, ema9, ema21, ema50,
     currentPrice, priceVsEma9, priceVsEma21, ema9VsEma21,
     volumeTrend, support, resistance,
     supports, resistances,
     signal, signalScore: score,
-    reasons: reasons.slice(0, 4),
+    reasons: reasons.slice(0, 5),
     trend, trendStrength,
     entryPlan,
   }

@@ -128,8 +128,9 @@ function SRLevels({
   )
 }
 
-function EntryPlanCard({ plan }: { plan: EntryPlan }) {
+function EntryPlanCard({ plan, signal }: { plan: EntryPlan; signal: string }) {
   const [copied, setCopied] = useState(false)
+  const isNeutral = signal === 'NEUTRAL'
 
   function handleCopy() {
     navigator.clipboard.writeText(plan.shareText).then(() => {
@@ -139,24 +140,38 @@ function EntryPlanCard({ plan }: { plan: EntryPlan }) {
   }
 
   const isLong = plan.direction === 'LONG'
-  const dirColor = isLong ? 'text-up' : 'text-down'
-  const dirBg = isLong ? 'bg-up/10 border-up/30' : 'bg-down/10 border-down/30'
+  const dirColor = isNeutral ? 'text-warn' : isLong ? 'text-up' : 'text-down'
+  const dirBg = isNeutral ? 'bg-warn/10 border-warn/20' : isLong ? 'bg-up/10 border-up/30' : 'bg-down/10 border-down/30'
 
   return (
     <div className={`bg-surface-800 rounded-2xl p-4 space-y-3 border ${dirBg}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-slate-300 text-xs font-semibold uppercase tracking-widest">Operación sugerida</p>
+          <p className="text-slate-300 text-xs font-semibold uppercase tracking-widest">
+            {isNeutral ? 'Niveles de referencia' : 'Operación sugerida'}
+          </p>
           <p className={`text-lg font-bold mt-0.5 ${dirColor}`}>
-            {isLong ? '▲ LONG' : '▼ SHORT'} ETH/USDT
+            {isNeutral ? '— ESPERAR SEÑAL' : isLong ? '▲ LONG ETH/USDT' : '▼ SHORT ETH/USDT'}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-slate-400 text-[10px]">Válida ~</p>
-          <p className="text-warn font-bold text-sm">{plan.validMinutes} min</p>
+          <p className="text-slate-400 text-[10px]">{isNeutral ? 'Mercado' : 'Válida ~'}</p>
+          <p className={`font-bold text-sm ${isNeutral ? 'text-warn' : 'text-warn'}`}>
+            {isNeutral ? 'Lateral' : `${plan.validMinutes} min`}
+          </p>
         </div>
       </div>
+
+      {/* Neutral explanation */}
+      {isNeutral && (
+        <div className="bg-warn/5 border border-warn/20 rounded-xl px-3 py-2">
+          <p className="text-warn text-xs font-semibold">¿Por qué esperar?</p>
+          <p className="text-slate-300 text-xs mt-1 leading-relaxed">
+            El mercado no tiene dirección clara. Los niveles abajo son referenciales — cuando el precio toque un soporte o resistencia y el score supere ±20, aparece la señal de entrada.
+          </p>
+        </div>
+      )}
 
       {/* Prices */}
       <div className="space-y-1.5">
@@ -201,21 +216,24 @@ function EntryPlanCard({ plan }: { plan: EntryPlan }) {
         ))}
       </div>
 
-      {/* Copy button */}
-      <button
-        onClick={handleCopy}
-        className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
-          copied
-            ? 'bg-up text-white'
-            : 'bg-brand text-white hover:bg-brand/80 active:scale-95'
-        }`}
-      >
-        {copied ? '✓ Copiado — pega en Telegram/WhatsApp' : '📤 Copiar señal de grupo'}
-      </button>
-
-      <p className="text-slate-500 text-[10px] text-center">
-        Capital base: $300 · 2% riesgo por operación · 15x apalancamiento
-      </p>
+      {/* Copy button — only when signal is directional */}
+      {!isNeutral && (
+        <>
+          <button
+            onClick={handleCopy}
+            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
+              copied
+                ? 'bg-up text-white'
+                : 'bg-brand text-white hover:bg-brand/80 active:scale-95'
+            }`}
+          >
+            {copied ? '✓ Copiado — pega en Telegram/WhatsApp' : '📤 Copiar señal de grupo'}
+          </button>
+          <p className="text-slate-500 text-[10px] text-center">
+            Capital base: $300 · 2% riesgo por operación · 15x apalancamiento
+          </p>
+        </>
+      )}
     </div>
   )
 }
@@ -260,8 +278,8 @@ export function MarketAnalysis({ symbol, interval }: Props) {
         <GaugeMeter score={analysis.signalScore} />
       </div>
 
-      {/* Entry plan (only when directional signal) */}
-      {analysis.entryPlan && <EntryPlanCard plan={analysis.entryPlan} />}
+      {/* Entry plan — always visible */}
+      <EntryPlanCard plan={analysis.entryPlan} signal={analysis.signal} />
 
       {/* S/R levels */}
       <SRLevels
@@ -269,6 +287,85 @@ export function MarketAnalysis({ symbol, interval }: Props) {
         resistances={analysis.resistances}
         currentPrice={analysis.currentPrice}
       />
+
+      {/* MACD */}
+      <div className="bg-surface-800 rounded-2xl p-4 space-y-3">
+        <div className="flex justify-between items-center">
+          <h3 className="text-white font-bold text-sm">MACD</h3>
+          <span className="text-slate-400 text-xs">Momentum del precio</span>
+        </div>
+
+        {/* Histogram bar visual */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-[10px] text-slate-400">
+            <span>Bajista</span><span>Alcista</span>
+          </div>
+          <div className="relative h-4 bg-surface-700 rounded-full overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-down via-surface-700 to-up opacity-20 rounded-full" />
+            {/* center line */}
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-surface-600" />
+            {/* histogram bar */}
+            {(() => {
+              const h = analysis.macd.histogram
+              const maxH = 5 // clamp visual range
+              const clamped = Math.max(-maxH, Math.min(maxH, h))
+              const pct = Math.abs(clamped) / maxH * 50
+              const isPos = h >= 0
+              return (
+                <div
+                  className={`absolute top-1 bottom-1 rounded-full transition-all duration-500 ${isPos ? 'bg-up' : 'bg-down'}`}
+                  style={isPos
+                    ? { left: '50%', width: `${pct}%` }
+                    : { right: '50%', width: `${pct}%` }}
+                />
+              )
+            })()}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            {
+              label: 'MACD',
+              value: analysis.macd.macd.toFixed(3),
+              color: analysis.macd.macd >= 0 ? 'text-up' : 'text-down',
+              hint: analysis.macd.macd >= 0 ? 'Sobre cero' : 'Bajo cero',
+            },
+            {
+              label: 'Señal',
+              value: analysis.macd.signal.toFixed(3),
+              color: 'text-slate-200',
+              hint: 'Línea de señal',
+            },
+            {
+              label: 'Histograma',
+              value: analysis.macd.histogram.toFixed(3),
+              color: analysis.macd.histogram >= 0 ? 'text-up' : 'text-down',
+              hint: analysis.macd.histogram >= 0 ? '↑ Momentum alcista' : '↓ Momentum bajista',
+            },
+          ].map(({ label, value, color, hint }) => (
+            <div key={label} className="bg-surface-700 rounded-xl p-2.5 text-center">
+              <p className="text-slate-400 text-[10px]">{label}</p>
+              <p className={`font-mono font-bold text-xs mt-1 ${color}`}>{value}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5 leading-tight">{hint}</p>
+            </div>
+          ))}
+        </div>
+
+        {analysis.macd.crossover && (
+          <div className={`rounded-xl px-3 py-2 border ${
+            analysis.macd.crossover === 'bullish_cross'
+              ? 'bg-up/10 border-up/30'
+              : 'bg-down/10 border-down/30'
+          }`}>
+            <p className={`text-xs font-bold ${analysis.macd.crossover === 'bullish_cross' ? 'text-up' : 'text-down'}`}>
+              {analysis.macd.crossover === 'bullish_cross'
+                ? '⚡ MACD cruzó al alza — señal de compra fuerte'
+                : '⚡ MACD cruzó a la baja — señal de venta fuerte'}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Technical indicators */}
       <div className="bg-surface-800 rounded-2xl p-4 space-y-3">
