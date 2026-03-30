@@ -64,11 +64,8 @@ export default function App() {
     )
   }
 
-  const riskLabel: Record<string, string> = {
-    conservative: 'Conservador',
-    moderate: 'Moderado',
-    aggressive: 'Agresivo',
-  }
+  // profile is kept for onboarding but not displayed in header anymore
+  void profile
 
   return (
     <div className="min-h-screen bg-surface-900 flex flex-col max-w-md mx-auto">
@@ -76,8 +73,8 @@ export default function App() {
       <header className="sticky top-0 z-10 bg-surface-900/95 backdrop-blur border-b border-surface-700 px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
-            {tab === 'cashflow' ? (
-              <h1 className="text-white font-bold text-base">Flujo de Caja</h1>
+            {tab === 'sim' ? (
+              <h1 className="text-white font-bold text-base">Simulador</h1>
             ) : (
               <button
                 onClick={() => setShowSymbolPicker(!showSymbolPicker)}
@@ -91,13 +88,13 @@ export default function App() {
             )}
             <p className="text-slate-400 text-xs">
               {tab === 'sim'
-                ? 'Backtest · últimas 500 velas 1h'
+                ? 'Señal en vivo + backtest'
                 : `Futuros Perpetuos · ${interval}`}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {ticker && tab !== 'cashflow' && (
+            {ticker && tab !== 'sim' && (
               <div className="text-right">
                 <p className={`font-mono font-bold text-sm ${ticker.priceChangePercent >= 0 ? 'text-up' : 'text-down'}`}>
                   ${ticker.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -127,7 +124,7 @@ export default function App() {
         </div>
 
         {/* Symbol picker dropdown */}
-        {showSymbolPicker && tab !== 'cashflow' && (
+        {showSymbolPicker && tab !== 'sim' && (
           <div className="grid grid-cols-4 gap-2 mt-3">
             {SYMBOLS.map((s) => (
               <button
@@ -143,8 +140,8 @@ export default function App() {
           </div>
         )}
 
-        {/* Interval selector */}
-        {(tab === 'chart' || tab === 'analysis') && tab !== 'sim' && (
+        {/* Interval selector — only for chart and analysis tabs */}
+        {(tab === 'chart' || tab === 'analysis') && (
           <div className="flex gap-2 mt-3">
             {INTERVALS.map((iv) => (
               <button
