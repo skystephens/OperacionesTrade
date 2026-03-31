@@ -13,7 +13,7 @@ import type { UserProfile } from './types'
 const SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'BNBUSDT'] as const
 type Symbol = typeof SYMBOLS[number]
 
-const INTERVALS = ['1m', '3m', '5m', '15m', '1h'] as const
+const INTERVALS = ['1m', '3m', '5m', '15m', '1h', '4h'] as const
 type Interval = typeof INTERVALS[number]
 
 type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'checklist' | 'sim'
