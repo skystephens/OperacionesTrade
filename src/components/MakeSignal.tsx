@@ -33,10 +33,12 @@ export function MakeSignal() {
   const [result, setResult] = useState<MakeResponse | null>(null)
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [telegramSent, setTelegramSent] = useState(false)
 
   async function handleAnalyze() {
     setLoading(true)
     setError(null)
+    setTelegramSent(false)
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
@@ -44,7 +46,12 @@ export function MakeSignal() {
         body: JSON.stringify({ trigger: 'manual', source: 'dashboard' }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: MakeResponse = await res.json()
+      const text = await res.text()
+      if (text.trim() === 'Accepted') {
+        setTelegramSent(true)
+        return
+      }
+      const data: MakeResponse = JSON.parse(text)
       setResult(data)
       setHistory(prev => [{ ...data, id: Date.now() }, ...prev.slice(0, 9)])
     } catch (e) {
@@ -66,12 +73,10 @@ export function MakeSignal() {
             <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest">Make · Señal en vivo</p>
             <p className="text-white font-bold text-base mt-0.5">Análisis con Telegram</p>
           </div>
-          {result && (
+          {(result || telegramSent) && (
             <div className="text-right">
-              <p className="text-slate-500 text-[10px]">{result.timestamp}</p>
-              {result.alerta_enviada && (
-                <p className="text-up text-xs font-bold mt-0.5">✓ Telegram enviado</p>
-              )}
+              {result && <p className="text-slate-500 text-[10px]">{result.timestamp}</p>}
+              <p className="text-up text-xs font-bold mt-0.5">✓ Telegram enviado</p>
             </div>
           )}
         </div>
@@ -94,6 +99,13 @@ export function MakeSignal() {
             '⚡ Analizar ETH ahora'
           )}
         </button>
+
+        {telegramSent && !result && (
+          <div className="bg-up/10 border border-up/30 rounded-xl px-3 py-2">
+            <p className="text-up text-xs font-bold">✓ Señal enviada a Telegram</p>
+            <p className="text-slate-400 text-xs mt-0.5">El análisis fue procesado. Revisa @trading_eth_sky_bot para ver los datos.</p>
+          </div>
+        )}
 
         {error && (
           <div className="bg-down/10 border border-down/30 rounded-xl px-3 py-2">
