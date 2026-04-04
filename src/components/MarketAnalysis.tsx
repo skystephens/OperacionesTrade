@@ -59,56 +59,120 @@ function SRLevels({
   const s2 = supports[1]
   const s3 = supports[2]
 
-  type LevelRow = { label: string; price: number; type: 'resistance' | 'current' | 'support'; tag?: string }
+  type LevelRow = { label: string; price: number; type: 'resistance' | 'current' | 'support'; tag: string; key: boolean }
 
   const rows: LevelRow[] = [
-    ...(r3 ? [{ label: 'Resistencia 3', price: r3, type: 'resistance' as const, tag: 'R3' }] : []),
-    ...(r2 ? [{ label: 'Resistencia 2', price: r2, type: 'resistance' as const, tag: 'R2' }] : []),
-    ...(r1 ? [{ label: 'Resistencia 1', price: r1, type: 'resistance' as const, tag: 'R1 ←' }] : []),
-    { label: 'Precio actual', price: currentPrice, type: 'current' as const, tag: 'Ahora' },
-    ...(s1 ? [{ label: 'Soporte 1', price: s1, type: 'support' as const, tag: 'S1 ←' }] : []),
-    ...(s2 ? [{ label: 'Soporte 2', price: s2, type: 'support' as const, tag: 'S2' }] : []),
-    ...(s3 ? [{ label: 'Soporte 3', price: s3, type: 'support' as const, tag: 'S3' }] : []),
+    ...(r3 ? [{ label: 'Resistencia 3', price: r3, type: 'resistance' as const, tag: 'R3', key: false }] : []),
+    ...(r2 ? [{ label: 'Resistencia 2', price: r2, type: 'resistance' as const, tag: 'R2', key: false }] : []),
+    ...(r1 ? [{ label: 'Resistencia 1', price: r1, type: 'resistance' as const, tag: 'R1', key: true }] : []),
+    { label: 'Precio actual', price: currentPrice, type: 'current' as const, tag: '●', key: false },
+    ...(s1 ? [{ label: 'Soporte 1', price: s1, type: 'support' as const, tag: 'S1', key: true }] : []),
+    ...(s2 ? [{ label: 'Soporte 2', price: s2, type: 'support' as const, tag: 'S2', key: false }] : []),
+    ...(s3 ? [{ label: 'Soporte 3', price: s3, type: 'support' as const, tag: 'S3', key: false }] : []),
   ]
 
+  // Visual gauge: show current price position between nearest S1 and R1
+  const gaugeMin = s1 ?? (currentPrice * 0.98)
+  const gaugeMax = r1 ?? (currentPrice * 1.02)
+  const gaugeRange = gaugeMax - gaugeMin
+  const currentPct = gaugeRange > 0 ? Math.max(0, Math.min(100, ((currentPrice - gaugeMin) / gaugeRange) * 100)) : 50
+  const distToR1 = r1 ? (((r1 - currentPrice) / currentPrice) * 100).toFixed(2) : null
+  const distToS1 = s1 ? (((currentPrice - s1) / currentPrice) * 100).toFixed(2) : null
+
   return (
-    <div className="bg-surface-800 rounded-2xl p-4 space-y-2">
+    <div className="bg-surface-800 rounded-2xl p-4 space-y-3">
       <div className="flex justify-between items-center">
         <h3 className="text-white font-bold text-sm">Soportes y Resistencias</h3>
         <span className="text-slate-400 text-xs">Pivot points reales</span>
       </div>
-      <div className="space-y-1.5">
+
+      {/* Visual gauge */}
+      <div className="space-y-2">
+        <div className="flex justify-between text-[10px] font-mono">
+          <span className="text-up font-bold">{s1 ? `S1 $${s1.toFixed(2)}` : '—'}</span>
+          <span className="text-slate-400">zona de precio</span>
+          <span className="text-down font-bold">{r1 ? `R1 $${r1.toFixed(2)}` : '—'}</span>
+        </div>
+
+        {/* Bar */}
+        <div className="relative h-7 rounded-xl overflow-hidden bg-gradient-to-r from-up/25 via-surface-700 to-down/25 border border-surface-600">
+          {/* zone fills */}
+          <div className="absolute inset-0 bg-gradient-to-r from-up/10 to-transparent" style={{ width: `${currentPct}%` }} />
+          <div className="absolute inset-0 bg-gradient-to-l from-down/10 to-transparent" style={{ left: `${currentPct}%` }} />
+          {/* center labels */}
+          {distToS1 && (
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-up/70">
+              -{distToS1}%
+            </span>
+          )}
+          {distToR1 && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-down/70">
+              +{distToR1}%
+            </span>
+          )}
+          {/* current price marker */}
+          <div
+            className="absolute top-0.5 bottom-0.5 w-0.5 bg-white rounded-full shadow-lg transition-all duration-500"
+            style={{ left: `calc(${currentPct}% - 1px)` }}
+          />
+          {/* price label */}
+          <div
+            className="absolute -top-px text-[9px] font-mono font-bold text-white bg-brand px-1 rounded-b-md transition-all duration-500"
+            style={{
+              left: `${currentPct}%`,
+              transform: `translateX(${currentPct > 80 ? '-100%' : currentPct < 20 ? '0%' : '-50%'})`,
+            }}
+          >
+            ${currentPrice.toFixed(0)}
+          </div>
+        </div>
+
+        {/* Support/Resistance zone labels */}
+        <div className="flex justify-between text-[9px] text-slate-500">
+          <span>← Zona soporte (Long)</span>
+          <span>(Short) Zona resistencia →</span>
+        </div>
+      </div>
+
+      {/* All levels — compact list */}
+      <div className="space-y-1">
         {rows.map((row) => {
           const pctFromCurrent = ((row.price - currentPrice) / currentPrice) * 100
-          const isKey = row.tag === 'R1 ←' || row.tag === 'S1 ←'
 
           return (
             <div
-              key={row.label}
-              className={`flex justify-between items-center rounded-xl px-3 py-2 ${
+              key={row.tag}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
                 row.type === 'resistance'
-                  ? isKey
-                    ? 'bg-down/15 border border-down/30'
-                    : 'bg-down/5 border border-down/10'
+                  ? row.key ? 'bg-down/15 border border-down/30' : 'bg-down/5 border border-down/10'
                   : row.type === 'support'
-                  ? isKey
-                    ? 'bg-up/15 border border-up/30'
-                    : 'bg-up/5 border border-up/10'
+                  ? row.key ? 'bg-up/15 border border-up/30' : 'bg-up/5 border border-up/10'
                   : 'bg-surface-700 border border-surface-600'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                  row.type === 'resistance' ? 'bg-down/20 text-down' :
-                  row.type === 'support' ? 'bg-up/20 text-up' :
-                  'bg-surface-600 text-slate-300'
-                }`}>
-                  {row.tag ?? ''}
-                </span>
-                <span className="text-slate-300 text-xs">{row.label}</span>
-              </div>
-              <div className="text-right">
-                <span className={`font-mono font-bold text-sm ${
+              {/* Tag badge */}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md w-8 text-center shrink-0 ${
+                row.type === 'resistance' ? 'bg-down/20 text-down' :
+                row.type === 'support' ? 'bg-up/20 text-up' :
+                'bg-surface-600 text-white'
+              }`}>
+                {row.tag}
+              </span>
+
+              {/* Mini bar showing distance */}
+              {row.type !== 'current' && (
+                <div className="flex-1 h-1.5 bg-surface-900/60 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${row.type === 'resistance' ? 'bg-down/50' : 'bg-up/50'}`}
+                    style={{ width: `${Math.min(100, Math.abs(pctFromCurrent) * 10)}%` }}
+                  />
+                </div>
+              )}
+              {row.type === 'current' && <div className="flex-1" />}
+
+              {/* Price + pct */}
+              <div className="text-right shrink-0">
+                <span className={`font-mono font-bold text-xs ${
                   row.type === 'resistance' ? 'text-down' :
                   row.type === 'support' ? 'text-up' :
                   'text-white'
@@ -116,7 +180,7 @@ function SRLevels({
                   ${row.price.toFixed(2)}
                 </span>
                 {row.type !== 'current' && (
-                  <p className="text-slate-500 text-[10px] font-mono">
+                  <p className="text-slate-500 text-[9px] font-mono">
                     {pctFromCurrent > 0 ? '+' : ''}{pctFromCurrent.toFixed(2)}%
                   </p>
                 )}

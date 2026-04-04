@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { analyzeMarket } from '../utils/indicators'
 import type { AnalysisResult } from '../utils/indicators'
 import type { KlineData } from '../types'
+import { Checklist } from './Checklist'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,13 +55,17 @@ async function fetchKlines(symbol: string, interval: string, limit: number): Pro
   }))
 }
 
+// ─── Shared journal key (same as TradeJournal.tsx) ───────────────────────────
+
+const JOURNAL_KEY = 'trade_journal_v1'
+
 // ─── Backtest engine ──────────────────────────────────────────────────────────
 
-function runBacktest(klines: KlineData[]): { trades: SimTrade[]; stats: BacktestStats } {
+interface SimParams { capital: number; riskPct: number; leverage: number }
+
+function runBacktest(klines: KlineData[], params: SimParams): { trades: SimTrade[]; stats: BacktestStats } {
   const trades: SimTrade[] = []
-  const capital = 300
-  const riskPct = 0.02
-  const leverage = 15
+  const { capital, riskPct, leverage } = params
   let inTrade = false
 
   for (let i = 60; i < klines.length - 1; i++) {
@@ -353,6 +358,12 @@ export function Backtester({ symbol }: Props) {
   const [btResult, setBtResult] = useState<{ trades: SimTrade[]; stats: BacktestStats } | null>(null)
   const [btError, setBtError] = useState('')
   const [showAll, setShowAll] = useState(false)
+  const [savedToJournal, setSavedToJournal] = useState(false)
+
+  // Configurable params
+  const [capital, setCapital] = useState(300)
+  const [leverage, setLeverage] = useState(15)
+  const [riskPct, setRiskPct] = useState(2)
 
   // Load live analysis on mount
   useEffect(() => {
@@ -365,9 +376,10 @@ export function Backtester({ symbol }: Props) {
   async function runSim() {
     setBtStatus('loading')
     setBtResult(null)
+    setSavedToJournal(false)
     try {
       const klines = await fetchKlines(symbol, btInterval, 500)
-      setBtResult(runBacktest(klines))
+      setBtResult(runBacktest(klines, { capital, riskPct: riskPct / 100, leverage }))
       setBtStatus('done')
     } catch (e) {
       setBtError(e instanceof Error ? e.message : 'Error')
@@ -375,11 +387,34 @@ export function Backtester({ symbol }: Props) {
     }
   }
 
+  function saveToJournal() {
+    if (!btResult) return
+    const existing = JSON.parse(localStorage.getItem(JOURNAL_KEY) ?? '[]')
+    const newEntries = btResult.trades.map((t) => ({
+      id: `sim_${t.index}_${Date.now()}`,
+      date: t.openTime,
+      pair: `${symbol.replace('USDT', '')}/USDT (SIM)`,
+      direction: t.direction,
+      entryPrice: t.entry,
+      exitPrice: t.exitPrice,
+      size: parseFloat(((capital * (riskPct / 100)) / (t.entry * Math.abs(t.entry - t.stopLoss) / t.entry)).toFixed(4)),
+      leverage,
+      pnl: t.pnlDollars,
+      status: 'CLOSED' as const,
+      notes: `Simulación backtest ${btInterval} · ${t.outcome} · Score ${t.signalScore > 0 ? '+' : ''}${t.signalScore}`,
+    }))
+    localStorage.setItem(JOURNAL_KEY, JSON.stringify([...newEntries, ...existing]))
+    setSavedToJournal(true)
+  }
+
   const { trades = [], stats } = btResult ?? {}
   const visibleTrades = showAll ? trades : trades.slice(-8)
 
   return (
     <div className="space-y-4">
+
+      {/* ── Checklist pre-operacion ── */}
+      <Checklist />
 
       {/* ── SECTION 1: Live signal + Binance params ── */}
       <div className="bg-surface-800 rounded-2xl p-4 space-y-1">
@@ -421,7 +456,58 @@ export function Backtester({ symbol }: Props) {
         </div>
       )}
 
-      {/* ── SECTION 2: Backtest ── */}
+      {/* ── SECTION 2: Sim params ── */}
+      <div className="bg-surface-800 rounded-2xl p-4 space-y-3">
+        <h3 className="text-white font-bold text-sm">Parámetros de simulación</h3>
+
+        <div className="grid grid-cols-3 gap-2">
+          {/* Capital */}
+          <div className="bg-surface-700 rounded-xl p-3 space-y-1.5">
+            <p className="text-slate-400 text-[10px] font-semibold uppercase">Capital $</p>
+            <input
+              type="number"
+              value={capital}
+              min={10}
+              max={100000}
+              onChange={(e) => setCapital(parseFloat(e.target.value) || 300)}
+              className="w-full bg-surface-900 text-white font-mono font-bold text-sm rounded-lg px-2 py-1.5 border border-surface-600 focus:border-brand outline-none"
+            />
+          </div>
+          {/* Leverage */}
+          <div className="bg-surface-700 rounded-xl p-3 space-y-1.5">
+            <p className="text-slate-400 text-[10px] font-semibold uppercase">Apal. x</p>
+            <input
+              type="number"
+              value={leverage}
+              min={1}
+              max={125}
+              onChange={(e) => setLeverage(parseFloat(e.target.value) || 15)}
+              className="w-full bg-surface-900 text-white font-mono font-bold text-sm rounded-lg px-2 py-1.5 border border-surface-600 focus:border-brand outline-none"
+            />
+          </div>
+          {/* Risk */}
+          <div className="bg-surface-700 rounded-xl p-3 space-y-1.5">
+            <p className="text-slate-400 text-[10px] font-semibold uppercase">Riesgo %</p>
+            <input
+              type="number"
+              value={riskPct}
+              min={0.1}
+              max={10}
+              step={0.1}
+              onChange={(e) => setRiskPct(parseFloat(e.target.value) || 2)}
+              className="w-full bg-surface-900 text-white font-mono font-bold text-sm rounded-lg px-2 py-1.5 border border-surface-600 focus:border-brand outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Summary of params */}
+        <div className="bg-surface-900/50 rounded-xl px-3 py-2 text-[10px] font-mono text-slate-400">
+          Max pérdida/trade: <span className="text-down font-bold">${(capital * riskPct / 100).toFixed(2)}</span>
+          {' · '}Liquidación aprox. a: <span className="text-warn font-bold">{(100 / leverage).toFixed(1)}% en contra</span>
+        </div>
+      </div>
+
+      {/* ── SECTION 3: Backtest ── */}
       <div className="bg-surface-800 rounded-2xl p-4 space-y-4">
         <div>
           <h3 className="text-white font-bold text-sm">Historial simulado</h3>
@@ -567,8 +653,27 @@ export function Backtester({ symbol }: Props) {
             )}
           </div>
 
+          {/* Save to journal */}
+          <div className="bg-surface-800 rounded-2xl p-4 space-y-2">
+            <h3 className="text-white font-bold text-sm">Guardar en Bitácora</h3>
+            <p className="text-slate-400 text-xs">
+              Guarda las {btResult?.trades.length ?? 0} operaciones simuladas en la Bitácora para analizarlas junto con tus trades reales.
+            </p>
+            <button
+              onClick={saveToJournal}
+              disabled={savedToJournal}
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
+                savedToJournal
+                  ? 'bg-up/20 text-up border border-up/30'
+                  : 'bg-surface-700 text-slate-200 hover:bg-surface-600 active:scale-95'
+              }`}
+            >
+              {savedToJournal ? '✓ Guardado en Bitácora' : '📋 Guardar en Bitácora'}
+            </button>
+          </div>
+
           <p className="text-slate-600 text-[10px] text-center px-4 pb-2">
-            Simulación sobre datos reales de Binance. No garantiza resultados futuros. Incluye fees y slippage en cálculos reales.
+            Simulación sobre datos reales de Binance. No garantiza resultados futuros.
           </p>
         </>
       )}

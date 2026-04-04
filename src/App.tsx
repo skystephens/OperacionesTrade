@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { PriceTicker } from './components/PriceTicker'
 import { RiskCalculator } from './components/RiskCalculator'
 import { TradeJournal } from './components/TradeJournal'
-import { Checklist } from './components/Checklist'
 import { MarketAnalysis } from './components/MarketAnalysis'
 import { Backtester } from './components/Backtester'
 import { Onboarding, loadProfile } from './components/Onboarding'
@@ -13,18 +12,17 @@ import type { UserProfile } from './types'
 const SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'BNBUSDT'] as const
 type Symbol = typeof SYMBOLS[number]
 
-const INTERVALS = ['1m', '3m', '5m', '15m', '1h', '4h'] as const
+const INTERVALS = ['1m', '3m', '5m', '15m', '1h', '4h', '1d', '1w', '1M'] as const
 type Interval = typeof INTERVALS[number]
 
-type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'checklist' | 'sim'
+type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'sim'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'chart',     label: 'Precio',   icon: '📈' },
-  { id: 'analysis',  label: 'Analisis', icon: '🧠' },
-  { id: 'risk',      label: 'Riesgo',   icon: '🧮' },
-  { id: 'journal',   label: 'Bitacora', icon: '📋' },
-  { id: 'checklist', label: 'Check',    icon: '✓'  },
-  { id: 'sim',       label: 'Sim',      icon: '🔬' },
+  { id: 'chart',    label: 'Precio',   icon: '📈' },
+  { id: 'analysis', label: 'Analisis', icon: '🧠' },
+  { id: 'risk',     label: 'Riesgo',   icon: '🧮' },
+  { id: 'journal',  label: 'Bitacora', icon: '📋' },
+  { id: 'sim',      label: 'Sim',      icon: '🔬' },
 ]
 
 function SymbolBadge({ symbol }: { symbol: Symbol }) {
@@ -142,12 +140,12 @@ export default function App() {
 
         {/* Interval selector — only for chart and analysis tabs */}
         {(tab === 'chart' || tab === 'analysis') && (
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-1.5 mt-3 overflow-x-auto pb-0.5 scrollbar-hide">
             {INTERVALS.map((iv) => (
               <button
                 key={iv}
                 onClick={() => setInterval(iv)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors shrink-0 ${
                   interval === iv ? 'bg-brand text-white' : 'bg-surface-700 text-slate-300'
                 }`}
               >
@@ -180,16 +178,15 @@ export default function App() {
             </div>
           </>
         )}
-        {tab === 'analysis'  && <MarketAnalysis symbol={symbol} interval={interval} />}
-        {tab === 'risk'      && <RiskCalculator currentPrice={ticker?.price ?? null} />}
-        {tab === 'journal'   && <TradeJournal currentPrice={ticker?.price ?? null} />}
-        {tab === 'checklist' && <Checklist />}
-        {tab === 'sim'       && <Backtester symbol={symbol} />}
+        {tab === 'analysis' && <MarketAnalysis symbol={symbol} interval={interval} />}
+        {tab === 'risk'     && <RiskCalculator currentPrice={ticker?.price ?? null} />}
+        {tab === 'journal'  && <TradeJournal currentPrice={ticker?.price ?? null} />}
+        {tab === 'sim'      && <Backtester symbol={symbol} />}
       </main>
 
       {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface-800 border-t border-surface-700">
-        <div className="grid grid-cols-6 px-1">
+        <div className="grid grid-cols-5 px-1">
           {TABS.map(({ id, label, icon }) => (
             <button
               key={id}

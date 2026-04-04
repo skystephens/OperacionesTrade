@@ -46,15 +46,14 @@ const GUIDES: Record<string, GuideItem> = {
       'Meta minima: win rate > 55% sostenido. Por debajo, vuelve a paper trading (simular sin dinero real).',
     ],
   },
-  checklist: {
-    title: 'Tab Checklist — Las 4 condiciones',
+  sim: {
+    title: 'Tab Sim — Checklist + Simulador',
     tips: [
-      'Completa este checklist ANTES de abrir cada posicion. Si alguna condicion no se cumple, NO operes.',
-      '1. Tendencia alineada: la senal del tab Analisis debe ser COMPRA o COMPRA FUERTE para Long. Si dice NEUTRO, espera.',
-      '2. Volumen suficiente: el volumen reciente debe estar aumentando. Mercado plano = slippage y falsas senales.',
-      '3. Stop-loss definido: calcula el precio exacto en el tab Riesgo antes de entrar. Sin stop = riesgo ilimitado.',
-      '4. Sin noticias macro: CPI, decision de la Fed, datos de empleo mueven el mercado de forma impredecible. Evita operar en esos momentos.',
-      'El 80% de las perdidas en scalping vienen de saltarse alguna de estas 4 condiciones.',
+      'Checklist pre-operacion: completa los 8 puntos ANTES de entrar a cualquier posicion. Si alguno no se cumple, NO operes.',
+      'Señal en vivo: muestra la direccion recomendada ahora mismo con todos los parametros listos para ingresar en Binance (entrada, SL, TP, tamano de posicion).',
+      'Parametros de simulacion: cambia el capital, apalancamiento y riesgo para ver como afectan los calculos. Los cambios aplican al backtest y a la señal en vivo.',
+      'Historial simulado: corre el backtest sobre las ultimas 500 velas del intervalo elegido. Si el win rate supera 60%, la estrategia tiene base solida.',
+      'Guardar en Bitacora: despues de correr la simulacion puedes guardar todas las operaciones simuladas en la Bitacora para analizarlas junto con tus trades reales.',
     ],
   },
   cashflow: {

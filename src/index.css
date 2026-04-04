@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-size: 17px; /* slight scale-up for better readability on mobile */
+}
+
 :root {
   color-scheme: dark;
 }
