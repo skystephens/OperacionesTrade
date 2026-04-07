@@ -220,8 +220,6 @@ export function AnalizarVelas({ symbol = 'ETHUSDT' }: Props) {
     }
   }
 
-  const noApiKey = !import.meta.env.VITE_GROQ_API_KEY && !import.meta.env.VITE_GEMINI_API_KEY
-
   return (
     <div className="space-y-4">
 
@@ -260,20 +258,11 @@ export function AnalizarVelas({ symbol = 'ETHUSDT' }: Props) {
           </div>
         </div>
 
-        {noApiKey && (
-          <div className="bg-warn/10 border border-warn/30 rounded-xl px-3 py-2">
-            <p className="text-warn text-xs font-bold">API key no configurada</p>
-            <p className="text-slate-400 text-xs mt-0.5">
-              Agrega <code className="text-warn">VITE_GROQ_API_KEY</code> o <code className="text-warn">VITE_GEMINI_API_KEY</code> en el archivo <code>.env</code> de Render.
-            </p>
-          </div>
-        )}
-
         <button
           onClick={analizar}
-          disabled={loading || noApiKey}
+          disabled={loading}
           className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 ${
-            loading || noApiKey
+            loading
               ? 'bg-surface-700 text-slate-500 cursor-not-allowed'
               : 'bg-brand text-white hover:bg-brand/80'
           }`}
