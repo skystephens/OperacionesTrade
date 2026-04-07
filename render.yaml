@@ -3,7 +3,7 @@ services:
     name: trade-dashboard
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: bash build.sh
     startCommand: npm run preview
     envVars:
       - key: NODE_VERSION
