@@ -4,6 +4,7 @@ import { RiskCalculator } from './components/RiskCalculator'
 import { TradeJournal } from './components/TradeJournal'
 import { MarketAnalysis } from './components/MarketAnalysis'
 import { Backtester } from './components/Backtester'
+import { AnalizarVelas } from './components/AnalizarVelas'
 import { Onboarding, loadProfile } from './components/Onboarding'
 import { TabGuide } from './components/TabGuide'
 import { useBinanceTicker } from './hooks/useBinanceWS'
@@ -15,7 +16,7 @@ type Symbol = typeof SYMBOLS[number]
 const INTERVALS = ['1m', '3m', '5m', '15m', '1h', '4h', '1d', '1w', '1M'] as const
 type Interval = typeof INTERVALS[number]
 
-type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'sim'
+type Tab = 'chart' | 'analysis' | 'risk' | 'journal' | 'sim' | 'ia'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'chart',    label: 'Precio',   icon: '📈' },
@@ -23,6 +24,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'risk',     label: 'Riesgo',   icon: '🧮' },
   { id: 'journal',  label: 'Bitacora', icon: '📋' },
   { id: 'sim',      label: 'Sim',      icon: '🔬' },
+  { id: 'ia',       label: 'IA',       icon: '🤖' },
 ]
 
 function SymbolBadge({ symbol }: { symbol: Symbol }) {
@@ -182,11 +184,12 @@ export default function App() {
         {tab === 'risk'     && <RiskCalculator currentPrice={ticker?.price ?? null} />}
         {tab === 'journal'  && <TradeJournal currentPrice={ticker?.price ?? null} />}
         {tab === 'sim'      && <Backtester symbol={symbol} />}
+        {tab === 'ia'       && <AnalizarVelas symbol={symbol} />}
       </main>
 
       {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface-800 border-t border-surface-700">
-        <div className="grid grid-cols-5 px-1">
+        <div className="grid grid-cols-6 px-1">
           {TABS.map(({ id, label, icon }) => (
             <button
               key={id}
