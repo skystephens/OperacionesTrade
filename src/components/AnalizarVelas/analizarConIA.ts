@@ -3,6 +3,25 @@ import type { AnalisisTimeframe, ResultadoIA } from './types'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
+export const STORAGE_KEYS = {
+  groq:     'ia_groq_api_key',
+  gemini:   'ia_gemini_api_key',
+  provider: 'ia_provider',
+}
+
+export function getStoredKey(provider: 'groq' | 'gemini'): string {
+  return localStorage.getItem(STORAGE_KEYS[provider]) ?? ''
+}
+
+export function getStoredProvider(): 'groq' | 'gemini' {
+  return (localStorage.getItem(STORAGE_KEYS.provider) as 'groq' | 'gemini') ?? 'gemini'
+}
+
+export function saveConfig(provider: 'groq' | 'gemini', key: string) {
+  localStorage.setItem(STORAGE_KEYS[provider], key)
+  localStorage.setItem(STORAGE_KEYS.provider, provider)
+}
+
 function buildPrompt(timeframes: AnalisisTimeframe[], capital: number, leverage: number): string {
   const datos = timeframes.map((tf) => {
     const { intervalo, indicadores: ind, patrones } = tf
@@ -19,61 +38,54 @@ Timeframe ${intervalo}:
   Precio vs EMA9: ${ind.precio > ind.ema9 ? 'ENCIMA' : 'DEBAJO'}
   Precio vs EMA21: ${ind.precio > ind.ema21 ? 'ENCIMA' : 'DEBAJO'}
   Tendencia: ${ind.tendencia}
-  Volumen relativo: ${ind.volumenRelativo.toFixed(2)}x del promedio (${ind.volumenRelativo > 1.2 ? 'ALTO' : ind.volumenRelativo < 0.8 ? 'BAJO' : 'NORMAL'})
+  Volumen relativo: ${ind.volumenRelativo.toFixed(2)}x del promedio
   Patrones detectados: ${patrones.length === 0 ? 'Ninguno' : patrones.map((p) => `${p.nombre} (${p.tipo})`).join(', ')}
   Últimas 5 velas OHLCV: ${JSON.stringify(ultimasVelas)}`
   }).join('\n')
 
   const precio = timeframes[0]?.indicadores.precio ?? 0
-  const slLong = (precio * (1 - 1 / leverage)).toFixed(2)
+  const slLong  = (precio * (1 - 1 / leverage)).toFixed(2)
   const slShort = (precio * (1 + 1 / leverage)).toFixed(2)
 
-  return `Eres un analista de trading experto en futuros de criptomonedas con 10 años de experiencia en scalping y swing trading.
+  return `Eres un analista de trading experto en futuros de criptomonedas con 10 años de experiencia en scalping.
 
-Analiza estos datos técnicos de ETH/USDT Perpetual Futuros en Binance y determina si hay una señal clara de LONG, SHORT, o si es mejor NO OPERAR.
+Analiza estos datos técnicos de ETH/USDT Perpetual Futuros en Binance y determina si hay señal de LONG, SHORT, o NO OPERAR.
 
-Capital disponible: $${capital} USDT | Apalancamiento: ${leverage}x (aislado)
-Precio de liquidación aprox: LONG=$${slLong} | SHORT=$${slShort}
+Capital: $${capital} USDT | Apalancamiento: ${leverage}x (aislado)
+Liquidación aprox: LONG=$${slLong} | SHORT=$${slShort}
 
 DATOS DE MERCADO:
 ${datos}
 
 INSTRUCCIONES:
-- Si los 3 timeframes (1m, 15m, 1h) coinciden en dirección → confianza alta
+- Si los 3 timeframes coinciden en dirección → confianza alta
 - Si hay conflicto entre timeframes → señal ESPERAR
-- El stop loss debe ser realista (no más del 1.5% del precio para ${leverage}x)
-- El take profit debe tener R:R mínimo 1:1.5
-- Considera el riesgo de liquidación con ${leverage}x de apalancamiento
+- Stop loss máximo 1.5% del precio para ${leverage}x
+- Take profit con R:R mínimo 1:1.5
 
-Responde ÚNICAMENTE con este JSON exacto (sin texto adicional, sin markdown):
+Responde ÚNICAMENTE con este JSON (sin texto extra, sin markdown):
 {
-  "señal": "LONG" | "SHORT" | "ESPERAR",
-  "confianza": 0-100,
-  "razon_principal": "texto corto máximo 100 caracteres",
-  "patron_detectado": "nombre del patrón o Ninguno",
-  "entrada_sugerida": precio_numero,
-  "stop_loss": precio_numero,
-  "take_profit": precio_numero,
-  "advertencias": ["advertencia 1", "advertencia 2"],
+  "señal": "LONG",
+  "confianza": 72,
+  "razon_principal": "texto corto",
+  "patron_detectado": "nombre o Ninguno",
+  "entrada_sugerida": 2050.00,
+  "stop_loss": 2035.00,
+  "take_profit": 2075.00,
+  "advertencias": ["advertencia 1"],
   "checklist": {
-    "tendencia_alineada": true|false,
-    "volumen_confirmado": true|false,
-    "rsi_favorable": true|false,
-    "patron_claro": true|false
+    "tendencia_alineada": true,
+    "volumen_confirmado": false,
+    "rsi_favorable": true,
+    "patron_claro": false
   }
 }`
 }
 
-async function llamarGroq(prompt: string): Promise<ResultadoIA> {
-  const key = import.meta.env.VITE_GROQ_API_KEY as string
-  if (!key) throw new Error('VITE_GROQ_API_KEY no configurada')
-
+async function llamarGroq(prompt: string, key: string): Promise<ResultadoIA> {
   const res = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`,
-    },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -81,42 +93,35 @@ async function llamarGroq(prompt: string): Promise<ResultadoIA> {
       max_tokens: 500,
     }),
   })
-
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Groq error ${res.status}: ${err.slice(0, 200)}`)
+    throw new Error(`Groq ${res.status}: ${err.slice(0, 200)}`)
   }
-
   const data = await res.json()
   const content: string = data.choices?.[0]?.message?.content ?? ''
-  const jsonMatch = content.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('Groq no devolvió JSON válido')
-  return JSON.parse(jsonMatch[0]) as ResultadoIA
+  const match = content.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Groq no devolvió JSON válido')
+  return JSON.parse(match[0]) as ResultadoIA
 }
 
-async function llamarGemini(prompt: string): Promise<ResultadoIA> {
-  const key = import.meta.env.VITE_GEMINI_API_KEY as string
-  if (!key) throw new Error('VITE_GEMINI_API_KEY no configurada')
-
+async function llamarGemini(prompt: string, key: string): Promise<ResultadoIA> {
   const res = await fetch(`${GEMINI_URL}?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
     }),
   })
-
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Gemini error ${res.status}: ${err.slice(0, 200)}`)
+    throw new Error(`Gemini ${res.status}: ${err.slice(0, 200)}`)
   }
-
   const data = await res.json()
   const content: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-  const jsonMatch = content.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('Gemini no devolvió JSON válido')
-  return JSON.parse(jsonMatch[0]) as ResultadoIA
+  const match = content.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Gemini no devolvió JSON válido')
+  return JSON.parse(match[0]) as ResultadoIA
 }
 
 export async function analizarConIA(
@@ -124,9 +129,14 @@ export async function analizarConIA(
   capital: number,
   leverage: number
 ): Promise<ResultadoIA> {
-  const prompt = buildPrompt(timeframes, capital, leverage)
-  const provider = (import.meta.env.VITE_AI_PROVIDER as string) ?? 'groq'
+  const provider = getStoredProvider()
+  const key = getStoredKey(provider)
 
-  if (provider === 'gemini') return llamarGemini(prompt)
-  return llamarGroq(prompt)
+  if (!key) throw new Error(
+    `API key de ${provider === 'groq' ? 'Groq' : 'Gemini'} no configurada. Pégala en el panel de configuración.`
+  )
+
+  const prompt = buildPrompt(timeframes, capital, leverage)
+  if (provider === 'gemini') return llamarGemini(prompt, key)
+  return llamarGroq(prompt, key)
 }

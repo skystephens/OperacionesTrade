@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { fetchVelas, calcularIndicadores } from './calcIndicadores'
 import { detectarPatrones } from './detectPatrones'
-import { analizarConIA } from './analizarConIA'
+import { analizarConIA, getStoredKey, getStoredProvider, saveConfig } from './analizarConIA'
 import type { AnalisisTimeframe, ResultadoIA } from './types'
 
 const MAKE_WEBHOOK = import.meta.env.VITE_MAKE_WEBHOOK_URL as string
@@ -148,6 +148,70 @@ function TimeframeCard({ tf }: { tf: AnalisisTimeframe }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Config Panel ────────────────────────────────────────────────────────────
+
+function ConfigPanel({ onSaved }: { onSaved: () => void }) {
+  const [provider, setProvider] = useState<'groq' | 'gemini'>(getStoredProvider())
+  const [key, setKey] = useState(getStoredKey(provider))
+  const [saved, setSaved] = useState(false)
+
+  function handleSave() {
+    if (!key.trim()) return
+    saveConfig(provider, key.trim())
+    setSaved(true)
+    setTimeout(() => { setSaved(false); onSaved() }, 1200)
+  }
+
+  return (
+    <div className="bg-surface-800 rounded-2xl p-4 space-y-3 border border-warn/30">
+      <div>
+        <p className="text-warn text-xs font-bold uppercase tracking-widest">Configurar API key</p>
+        <p className="text-slate-400 text-xs mt-0.5">Se guarda en el dispositivo, no se envía a ningún servidor.</p>
+      </div>
+
+      {/* Provider selector */}
+      <div className="flex rounded-xl overflow-hidden border border-surface-700">
+        {(['gemini', 'groq'] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => { setProvider(p); setKey(getStoredKey(p)) }}
+            className={`flex-1 py-2 text-xs font-bold transition-colors ${provider === p ? 'bg-brand text-white' : 'bg-surface-700 text-slate-400'}`}
+          >
+            {p === 'gemini' ? 'Gemini (gratuito)' : 'Groq (rápido)'}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-slate-500 text-[10px]">
+          {provider === 'gemini'
+            ? 'API key de Google AI Studio (aistudio.google.com)'
+            : 'API key de Groq (console.groq.com)'}
+        </p>
+        <input
+          type="text"
+          placeholder={provider === 'gemini' ? 'AIzaSy...' : 'gsk_...'}
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          className="w-full bg-surface-900 text-white font-mono text-xs rounded-xl px-3 py-2.5 border border-surface-600 focus:border-brand outline-none"
+        />
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={!key.trim() || saved}
+        className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
+          saved ? 'bg-up/20 text-up border border-up/30' : 'bg-brand text-white active:scale-95 disabled:opacity-40'
+        }`}
+      >
+        {saved ? '✓ Guardado' : 'Guardar key'}
+      </button>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 interface Props { symbol?: string }
 
 export function AnalizarVelas({ symbol = 'ETHUSDT' }: Props) {
@@ -159,6 +223,7 @@ export function AnalizarVelas({ symbol = 'ETHUSDT' }: Props) {
   const [leverage, setLeverage] = useState(20)
   const [telegramSent, setTelegramSent] = useState(false)
   const [telegramLoading, setTelegramLoading] = useState(false)
+  const [showConfig, setShowConfig] = useState(!getStoredKey(getStoredProvider()))
 
   async function analizar() {
     setLoading(true)
@@ -257,6 +322,22 @@ export function AnalizarVelas({ symbol = 'ETHUSDT' }: Props) {
             />
           </div>
         </div>
+
+        {/* Config toggle */}
+        <button
+          onClick={() => setShowConfig(!showConfig)}
+          className="w-full text-left flex justify-between items-center px-3 py-2 bg-surface-700 rounded-xl"
+        >
+          <span className="text-slate-300 text-xs font-bold">
+            🔑 API key · {getStoredProvider() === 'gemini' ? 'Gemini' : 'Groq'}
+            {getStoredKey(getStoredProvider()) ? ' ✓' : ' — sin configurar'}
+          </span>
+          <span className="text-slate-500 text-xs">{showConfig ? '▲' : '▼'}</span>
+        </button>
+
+        {showConfig && (
+          <ConfigPanel onSaved={() => setShowConfig(false)} />
+        )}
 
         <button
           onClick={analizar}
