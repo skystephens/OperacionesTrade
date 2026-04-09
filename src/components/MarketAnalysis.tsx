@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useBinanceKlines } from '../hooks/useBinanceWS'
 import { analyzeMarket } from '../utils/indicators'
 import type { EntryPlan, AnalysisResult } from '../utils/indicators'
-import { MakeSignal } from './MakeSignal'
 
 const SIGNAL_CONFIG = {
   STRONG_LONG: { label: 'COMPRA FUERTE', color: 'text-up', bg: 'bg-up/20 border-up/40', bar: 'bg-up', icon: '▲▲' },
@@ -444,16 +443,6 @@ export function MarketAnalysis({ symbol, interval }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Make.com webhook signal */}
-      <MakeSignal />
-
-      {/* Divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-surface-700" />
-        <span className="text-slate-600 text-xs font-semibold uppercase tracking-wider">Análisis técnico local</span>
-        <div className="flex-1 h-px bg-surface-700" />
-      </div>
-
       {/* Signal card */}
       <div className={`bg-surface-800 rounded-2xl p-4 border ${cfg.bg} space-y-3`}>
         <div className="flex items-center justify-between">
