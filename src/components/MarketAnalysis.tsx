@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useBinanceKlines } from '../hooks/useBinanceWS'
 import { analyzeMarket } from '../utils/indicators'
-import type { EntryPlan } from '../utils/indicators'
+import type { EntryPlan, AnalysisResult } from '../utils/indicators'
 import { MakeSignal } from './MakeSignal'
 
 const SIGNAL_CONFIG = {
@@ -193,6 +193,127 @@ function SRLevels({
   )
 }
 
+function CondicionesEntrada({ analysis }: { analysis: AnalysisResult }) {
+  const isShort = analysis.signal === 'SHORT' || analysis.signal === 'STRONG_SHORT'
+
+  const conditions = [
+    {
+      nombre: isShort ? 'Death Cross activo' : 'Golden Cross activo',
+      desc: isShort ? 'EMA 9 por debajo de EMA 21' : 'EMA 9 por encima de EMA 21',
+      ok: isShort ? analysis.ema9VsEma21 === 'below' : analysis.ema9VsEma21 === 'above',
+      valor: analysis.ema9VsEma21 === 'above' ? 'Golden Cross' : 'Death Cross',
+    },
+    {
+      nombre: isShort ? 'Precio bajo EMAs' : 'Precio sobre EMAs',
+      desc: isShort ? 'Precio por debajo de EMA 9 y EMA 21' : 'Precio por encima de EMA 9 y EMA 21',
+      ok: isShort
+        ? analysis.priceVsEma9 === 'below' && analysis.priceVsEma21 === 'below'
+        : analysis.priceVsEma9 === 'above' && analysis.priceVsEma21 === 'above',
+      valor: `EMA9: ${analysis.priceVsEma9 === 'above' ? '↑' : '↓'} EMA21: ${analysis.priceVsEma21 === 'above' ? '↑' : '↓'}`,
+    },
+    {
+      nombre: 'RSI favorable',
+      desc: isShort ? 'RSI entre 35-60 (no sobrevendido)' : 'RSI entre 40-65 (no sobrecomprado)',
+      ok: isShort
+        ? analysis.rsi >= 35 && analysis.rsi <= 60
+        : analysis.rsi >= 40 && analysis.rsi <= 65,
+      valor: `RSI ${analysis.rsi.toFixed(1)}`,
+    },
+    {
+      nombre: isShort ? 'MACD bajista' : 'MACD alcista',
+      desc: 'Momentum confirma la dirección',
+      ok: isShort
+        ? analysis.macd.trend === 'bearish' || analysis.macd.crossover === 'bearish_cross'
+        : analysis.macd.trend === 'bullish' || analysis.macd.crossover === 'bullish_cross',
+      valor: analysis.macd.crossover === 'bullish_cross' ? '⚡ Cruce alcista' :
+             analysis.macd.crossover === 'bearish_cross' ? '⚡ Cruce bajista' :
+             analysis.macd.histogram >= 0 ? `+${analysis.macd.histogram.toFixed(3)}` : analysis.macd.histogram.toFixed(3),
+    },
+    {
+      nombre: 'Volumen confirma',
+      desc: 'Volumen reciente mayor al anterior',
+      ok: analysis.volumeTrend === 'increasing',
+      valor: analysis.volumeTrend === 'increasing' ? '↑ Subiendo' : analysis.volumeTrend === 'decreasing' ? '↓ Bajando' : '→ Neutral',
+    },
+    {
+      nombre: 'Score de señal fuerte',
+      desc: isShort ? 'Score ≤ −20 confirma dirección' : 'Score ≥ +20 confirma dirección',
+      ok: isShort ? analysis.signalScore <= -20 : analysis.signalScore >= 20,
+      valor: `${analysis.signalScore > 0 ? '+' : ''}${analysis.signalScore}`,
+    },
+    {
+      nombre: isShort ? 'Espacio hacia soporte' : 'Espacio hacia resistencia',
+      desc: isShort ? 'S1 está lejos — recorrido libre hacia abajo' : 'R1 está lejos — recorrido libre hacia arriba',
+      ok: isShort
+        ? !analysis.supports[0] || ((analysis.currentPrice - analysis.supports[0]) / analysis.currentPrice) > 0.005
+        : !analysis.resistances[0] || ((analysis.resistances[0] - analysis.currentPrice) / analysis.currentPrice) > 0.005,
+      valor: isShort
+        ? (analysis.supports[0] ? `-${(((analysis.currentPrice - analysis.supports[0]) / analysis.currentPrice) * 100).toFixed(2)}% a S1` : 'Sin soporte')
+        : (analysis.resistances[0] ? `+${(((analysis.resistances[0] - analysis.currentPrice) / analysis.currentPrice) * 100).toFixed(2)}% a R1` : 'Sin resistencia'),
+    },
+  ]
+
+  const cumplidas = conditions.filter((c) => c.ok).length
+  const total = conditions.length
+  const pct = (cumplidas / total) * 100
+
+  const verdict =
+    cumplidas >= 6 ? { label: 'ENTRADA ÓPTIMA', color: 'text-up', bg: 'bg-up/15 border-up/30' } :
+    cumplidas >= 4 ? { label: 'POSIBLE ENTRADA', color: 'text-warn', bg: 'bg-warn/10 border-warn/20' } :
+    { label: 'NO OPERAR', color: 'text-down', bg: 'bg-down/15 border-down/30' }
+
+  const icon = cumplidas >= 6 ? '✅' : cumplidas >= 4 ? '⚡' : '⛔'
+
+  return (
+    <div className={`bg-surface-800 rounded-2xl p-4 space-y-3 border ${verdict.bg}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-white font-bold text-sm">Checklist de Entrada</h3>
+        <span className={`font-bold text-sm ${verdict.color}`}>{cumplidas}/{total} cumplidas</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-2.5 bg-surface-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${
+            pct >= 80 ? 'bg-up' : pct >= 55 ? 'bg-warn' : 'bg-down'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Verdict */}
+      <div className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border ${verdict.bg}`}>
+        <span className="text-base">{icon}</span>
+        <p className={`font-bold text-base ${verdict.color}`}>{verdict.label}</p>
+      </div>
+
+      {/* Conditions list */}
+      <div className="space-y-1.5">
+        {conditions.map((c) => (
+          <div
+            key={c.nombre}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 border ${
+              c.ok ? 'bg-up/8 border-up/20' : 'bg-surface-700/50 border-surface-600'
+            }`}
+          >
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+              c.ok ? 'bg-up text-black' : 'bg-surface-600 text-slate-400'
+            }`}>
+              {c.ok ? '✓' : '✗'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-semibold leading-tight ${c.ok ? 'text-white' : 'text-slate-400'}`}>{c.nombre}</p>
+              <p className="text-slate-500 text-[10px] leading-tight mt-0.5">{c.desc}</p>
+            </div>
+            <span className={`text-[10px] font-mono shrink-0 ${c.ok ? 'text-up' : 'text-slate-500'}`}>{c.valor}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function EntryPlanCard({ plan, signal }: { plan: EntryPlan; signal: string }) {
   const [copied, setCopied] = useState(false)
   const isNeutral = signal === 'NEUTRAL'
@@ -352,6 +473,9 @@ export function MarketAnalysis({ symbol, interval }: Props) {
         </div>
         <GaugeMeter score={analysis.signalScore} />
       </div>
+
+      {/* Entry conditions checklist */}
+      <CondicionesEntrada analysis={analysis} />
 
       {/* Entry plan — always visible */}
       <EntryPlanCard plan={analysis.entryPlan} signal={analysis.signal} />
